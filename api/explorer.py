@@ -40,7 +40,7 @@ def Query(account,start, end, op_type_id, to_addr ):
         return {'error_code':1, 'msg': 'start date can not be null'}
     if end == 'null':
         return {'error_code':2, 'msg': 'end date can not be null'}
-    if op_type_id not in (0,1,2,4):
+    if op_type_id not in (0,1,2,4, 6,37):
         return {'error_code':3, 'msg': 'operation type not support'}
     logger.info('trying to query...')
     # task = Async_Query.apply_async(args = [account,start, end, op_type_id ])
@@ -63,11 +63,18 @@ def Async_Query(account,start, end, op_type_id ,to_addr):
     c = db.account_history.find({'bulk.account_history.account':account,'bulk.operation_type':op_type_id, 'bulk.block_data.block_time':{'$gte':start, '$lte':end} })
     res = []
     for j in c:
-        tmp = {"op": j['op'], "block_num": j['bulk']["block_data"]["block_num"],
+        d = {"op": j['op'], "block_num": j['bulk']["block_data"]["block_num"],
                       "timestamp": j['bulk']["block_data"]["block_time"]
                       }
-        
-        res.append(flatten( tmp , '__') )
+        if op_type_id == 6:
+            d['op'].pop('owner')
+            d['op'].pop('active')
+        tmp = flatten(d, '__')
+        keys = list(tmp.keys())
+        for k in keys:
+            if 'extensions' in k or 'memo' in k:
+                tmp.pop(k)
+        res.append( tmp )
     c.close()
     logger.info('cursor finished!')
     if len(res) > 0:

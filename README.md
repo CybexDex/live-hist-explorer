@@ -23,3 +23,10 @@ Quick Setup
 6. Go to `http://localhost:5000/` and enjoy this application!
 
 For details on how this all works, see my article [Using Celery with Flask](http://blog.miguelgrinberg.com/post/using-celery-with-flask).
+
+* other notes
+1. mkdir -p /tmp/livespace/
+2. recommend to use py3
+3. currently celery can't auto-reload code, you have to restart it once changes happen
+4.
+
