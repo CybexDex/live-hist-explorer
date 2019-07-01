@@ -1,0 +1,55 @@
+swagger: '2.0'
+info:
+  title: BitShares Excplorer API
+  description: Exposes BitShares calls needed to explore the blockchain
+  version: '1'
+schemes:
+  - http
+  - https
+produces:
+  - application/json
+paths:
+  "/Query":
+    get:
+      description: Get statistic_rank_top with duration('24','12','1'), side in ('sell','buy'), ttype in ('net','') and asset id
+      operationId: api.explorer.Query
+      parameters:
+        - in: query
+          name: start
+          default: "2019-01-01"
+          type: string
+          required: true
+          description: start date
+        - in: query
+          name: end
+          default: "2019-06-01"
+          type: string
+          required: true
+          description: end date
+        - in: query
+          name: op_type_id
+          default: 1
+          type: integer
+          required: true
+          description: operation type id
+        - in: query
+          name: account
+          default: 1.2.2
+          type: string
+          required: true
+          description: account id
+        - in: query
+          name: to_addr
+          default: 313548025@qq.com
+          type: string
+          required: true
+          description: email address
+      responses:
+        '200':
+          description: Array of operation data
+        '500':
+          description: Error processing parameters
+      tags:
+        - api
+        - blockchain
+
