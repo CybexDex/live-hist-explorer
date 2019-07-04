@@ -1,6 +1,6 @@
 from websocket import create_connection
 import json
-from services.cache import cache
+# from services.cache import cache
 import logging
 
 class RPCError(Exception):
@@ -28,17 +28,15 @@ class BitsharesWebsocketClient():
         }
         request_string = json.dumps(payload) 
         logging.info('> {}'.format(request_string))
-        #print('> {}'.format(request_string))
-	try:
+        try:
             self.ws.send(request_string)
             self.request_id += 1
-	except:
-	    raise RPCError(request_string)
-	try:
+        except:
+            raise RPCError(request_string)
+        try:
             reply =  self.ws.recv()
-	except:
-	    raise RPCError("ws.recv error when send req: " + request_string)
-        #print('< {}'.format(reply))
+        except:
+            raise RPCError("ws.recv error when send req: " + request_string)
 
         ret = {}
         try:
@@ -48,7 +46,6 @@ class BitsharesWebsocketClient():
 
         
         if 'error' in ret:
-	    print request_string
             if 'detail' in ret['error']:
                 raise RPCError(ret['error']['detail'])
             else:
@@ -65,7 +62,6 @@ class BitsharesWebsocketClient():
     def get_object(self, object_id):
         return self.request('database', 'get_objects', [[object_id]])[0]
 
-    @cache.memoize()
     def get_global_properties(self):
         return self.request('database', 'get_global_properties', [])
     def close(self):
@@ -75,10 +71,10 @@ class BitsharesWebsocketClient():
 
 class BitsharesWebsocketClientFactory():
     def get_instance(self, url = 1):
-	if url == 1:
-	    return BitsharesWebsocketClient(config.WEBSOCKET_URL)
-	else:
-	    return BitsharesWebsocketClient(config.WEBSOCKET_URL2)
+        if url == 1:
+            return BitsharesWebsocketClient(config.WEBSOCKET_URL)
+        else:
+            return BitsharesWebsocketClient(config.WEBSOCKET_URL2)
 
 
 import config

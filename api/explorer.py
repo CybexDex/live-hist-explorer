@@ -1,4 +1,5 @@
 import datetime
+from services.bitshares_websocket_client import BitsharesWebsocketClient, client as bitshares_ws_client_factory
 import json
 import config
 import logging
@@ -34,6 +35,37 @@ from flatten_json import flatten
 from services.celery import celery
 
 import jsonify
+
+assetMap = {}
+accountMap = {}
+
+def _get_account(account_id):
+    bitshares_ws_client = bitshares_ws_client_factory.get_instance()
+    res = bitshares_ws_client.request('database', 'get_accounts', [[account_id]])
+    bitshares_ws_client.close()
+    return res[0]
+
+
+def _is_object(string):
+    return len(string.split(".")) == 3
+
+def _get_asset(asset_id):
+    asset = None
+    bitshares_ws_client = bitshares_ws_client_factory.get_instance()
+    asset = bitshares_ws_client.request('database', 'get_assets', [[asset_id], 0])[0]
+    # dynamic_asset_data = bitshares_ws_client.get_object(asset["dynamic_asset_data_id"])
+    # asset["current_supply"] = dynamic_asset_data["current_supply"]
+    # asset["confidential_supply"] = dynamic_asset_data["confidential_supply"]
+    # asset["accumulated_fees"] = dynamic_asset_data["accumulated_fees"]
+    # asset["fee_pool"] = dynamic_asset_data["fee_pool"]
+
+    # issuer = bitshares_ws_client.get_object(asset["issuer"])
+    # asset["issuer_name"] = issuer["name"]
+    bitshares_ws_client.close()
+
+    return asset
+
+
 # @cache.memoize(timeout= 3 )    
 def Query(account,start, end, op_type_id, to_addr ):
     if start == 'null':
@@ -57,11 +89,39 @@ def test_async(self):
     logger.info('after sleep')
     return {}
 
+LIMIT = 100000
+def getAssetMap():
+    return assetMap
+def getAccountMap():
+    return accountMap
+def fulfillAccountMap(k):
+    if k in accountMap:
+        return accountMap[k]
+    else:
+        logger.info(k)
+        t = _get_account(k)
+        accountMap[k] = t['name']
+        return accountMap[k]
+
+
+def fulfillAssetMap(k):
+    if k in assetMap:
+        return assetMap[k]
+    else:
+        logger.info(k)
+        t = _get_asset(k)
+        assetMap[k] = (t['symbol'],t['precision'])
+        return assetMap[k]
+
 @celery.task
 def Async_Query(account,start, end, op_type_id ,to_addr):
     logger.info('cursor creating...')
     c = db.account_history.find({'bulk.account_history.account':account,'bulk.operation_type':op_type_id, 'bulk.block_data.block_time':{'$gte':start, '$lte':end} })
     res = []
+    page = 0
+    files = []
+    filename_base = '_'.join([account,start,end,str(op_type_id)])
+
     for j in c:
         d = {"op": j['op'], "block_num": j['bulk']["block_data"]["block_num"],
                       "timestamp": j['bulk']["block_data"]["block_time"]
@@ -74,18 +134,60 @@ def Async_Query(account,start, end, op_type_id ,to_addr):
         for k in keys:
             if 'extensions' in k or 'memo' in k:
                 tmp.pop(k)
+                continue
+            if k[-8:] == 'asset_id':
+                kroot = k[:-8]
+                kamount = kroot + 'amount'
+                kasset_name = kroot + 'asset_name'
+                fulfillAssetMap(tmp[k])
+                tmp[kasset_name] = assetMap[tmp[k]][0]
+                if kamount in keys:
+                    tmp[kamount] = float(tmp[kamount]) / (10 ** assetMap[tmp[k]][1])
+            if k[-10:] == 'account_id':
+                kroot = k[:-10]
+                kaccount_name = kroot + 'account_name'
+                tmp[kaccount_name] = fulfillAccountMap(tmp[k])
+            if op_type_id == 1 and k[-6:] == 'seller':
+                kroot = k[:-6]
+                kaccount_name = kroot + 'seller_name'
+                tmp[kaccount_name] = fulfillAccountMap(tmp[k])
+            if op_type_id == 0 and k[-4:] == 'from':
+                kroot = k[:-4]
+                kaccount_name = kroot + 'from_account_name'
+                tmp[kaccount_name] = fulfillAccountMap(tmp[k])
+            if op_type_id == 0 and k[-2:] == 'to':
+                kroot = k[:-2]
+                kaccount_name = kroot + 'to_account_name'
+                tmp[kaccount_name] = fulfillAccountMap(tmp[k])
+            if k[-7:] == 'account':
+                kroot = k[:-7]
+                kaccount_name = kroot + 'account_name'
+                tmp[kaccount_name] = fulfillAccountMap(tmp[k])
         res.append( tmp )
+        if len(res) >= LIMIT:
+            respd = pd.DataFrame(data = res, columns = res[0].keys())
+            filename = filename_base + '_page' + str(page) + '.csv'
+            filepath = config.TODIR + '/'  + filename 
+            respd.to_csv(filepath)
+            files.append(filepath)
+            page += 1
+            res = []
+        else:
+            continue
     c.close()
-    logger.info('cursor finished!')
     if len(res) > 0:
         respd = pd.DataFrame(data = res, columns = res[0].keys())
     else:
-        logger.info('no data found')
         respd = pd.DataFrame()
-    filename = '_'.join([account,start,end,str(op_type_id)]) + '.csv'
+        logger.info('no data found, no email sent!')
+    filename = filename_base + '_page' + str(page) + '.csv'
     filepath = config.TODIR + '/'  + filename 
     respd.to_csv(filepath)
-    qmail.mail(filepath, to_addr)
+    files.append(filepath)
+    logger.info('cursor finished!')
+    qmail.mail(files, to_addr)
     logger.info('mail sent to '+ to_addr)
-    return {'result':filename}
+    return {'result': filename_base + '*.csv','status': 'Task completed!'}
+
+
 

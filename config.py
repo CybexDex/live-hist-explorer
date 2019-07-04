@@ -6,6 +6,10 @@ Name= 'live-hist'
 CELERY_BROKER_URL='redis://localhost:6379/0'
 CELERY_RESULT_BACKEND='redis://localhost:6379/0'
 TODIR='/tmp/livespace/'
+WS_ADDR='ws://47.102.157.234:8090/'
+
+WEBSOCKET_URL = os.environ.get('WEBSOCKET_URL',WS_ADDR) 
+
 
 MAIL_SERVER='smtp.qq.com'
 MAIL_PORT='465'

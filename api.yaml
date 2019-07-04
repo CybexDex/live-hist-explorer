@@ -11,7 +11,7 @@ produces:
 paths:
   "/Query":
     get:
-      description: Get statistic_rank_top with duration('24','12','1'), side in ('sell','buy'), ttype in ('net','') and asset id
+      description: Get history ops
       operationId: api.explorer.Query
       parameters:
         - in: query
@@ -44,6 +44,30 @@ paths:
           type: string
           required: true
           description: email address
+      responses:
+        '200':
+          description: Array of operation data
+        '500':
+          description: Error processing parameters
+      tags:
+        - api
+        - blockchain
+  "/getAssetMap":
+    get:
+      description: Get getAssetMap
+      operationId: api.explorer.getAssetMap
+      responses:
+        '200':
+          description: Array of operation data
+        '500':
+          description: Error processing parameters
+      tags:
+        - api
+        - blockchain
+  "/getAccountMap":
+    get:
+      description: Get getAccountMap
+      operationId: api.explorer.getAccountMap
       responses:
         '200':
           description: Array of operation data
