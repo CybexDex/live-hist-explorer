@@ -15,7 +15,7 @@ is_print_date = False
 logging.basicConfig(level=logging.DEBUG,
                 format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                 datefmt='%a, %d %b %Y %H:%M:%S',
-                filename='/tmp/log/hist.log',
+                filename='/tmp/log/live_.log',
                 filemode='w')
 logHandler = TimedRotatingFileHandler(filename = '/tmp/log/live_.log', when = 'D', interval = 1, encoding='utf-8')
 logger = logging.getLogger('logger')
@@ -38,7 +38,7 @@ import jsonify
 
 assetMap = {}
 accountMap = {}
-
+logger.info('global:'+ str(id(assetMap)))
 def _get_account(account_id):
     bitshares_ws_client = bitshares_ws_client_factory.get_instance()
     res = bitshares_ws_client.request('database', 'get_accounts', [[account_id]])
@@ -80,7 +80,9 @@ def Query(account,start, end, op_type_id, to_addr ):
     # task = test_async.apply_async()
     logger.info('task sent... with id '+ str(task.id))
     return {'task':task.id}
-
+def get_result(task_id):
+    result = celery.AsyncResult(task_id)
+    return result.result
 
 @celery.task(bind=True)
 def test_async(self):
@@ -90,10 +92,7 @@ def test_async(self):
     return {}
 
 LIMIT = 100000
-def getAssetMap():
-    return assetMap
-def getAccountMap():
-    return accountMap
+testMap = {'1':5}
 def fulfillAccountMap(k):
     if k in accountMap:
         return accountMap[k]
@@ -105,17 +104,20 @@ def fulfillAccountMap(k):
 
 
 def fulfillAssetMap(k):
+    logger.info('fulfillAssetMap:'+ str(id(assetMap)))
     if k in assetMap:
         return assetMap[k]
     else:
         logger.info(k)
         t = _get_asset(k)
         assetMap[k] = (t['symbol'],t['precision'])
+        logger.info(json.dumps(assetMap))
         return assetMap[k]
 
 @celery.task
 def Async_Query(account,start, end, op_type_id ,to_addr):
     logger.info('cursor creating...')
+    logger.info('Async_Query:'+ str(id(assetMap)))
     c = db.account_history.find({'bulk.account_history.account':account,'bulk.operation_type':op_type_id, 'bulk.block_data.block_time':{'$gte':start, '$lte':end} })
     res = []
     page = 0
