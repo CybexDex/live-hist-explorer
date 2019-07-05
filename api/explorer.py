@@ -11,6 +11,10 @@ import traceback
 from logging.handlers import TimedRotatingFileHandler
 import types
 from services import qmail
+from services.cache import cache
+
+
+
 is_print_date = False
 logging.basicConfig(level=logging.DEBUG,
                 format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -66,7 +70,7 @@ def _get_asset(asset_id):
     return asset
 
 
-# @cache.memoize(timeout= 3 )    
+@cache.memoize(timeout= 600 )    
 def Query(account,start, end, op_type_id, to_addr ):
     if start == 'null':
         return {'error_code':1, 'msg': 'start date can not be null'}

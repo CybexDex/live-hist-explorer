@@ -9,6 +9,11 @@ TODIR='/tmp/livespace/'
 WS_ADDR='ws://47.102.157.234:8090/'
 
 WEBSOCKET_URL = os.environ.get('WEBSOCKET_URL',WS_ADDR) 
+CACHE = {
+    'CACHE_TYPE': os.environ.get('CACHE_TYPE', 'simple'),
+    'CACHE_DEFAULT_TIMEOUT': int(os.environ.get('CACHE_DEFAULT_TIMEOUT', 600)) # 10 min
+}
+
 
 
 MAIL_SERVER='smtp.qq.com'
