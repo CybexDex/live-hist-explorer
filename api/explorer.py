@@ -108,7 +108,6 @@ def fulfillAccountMap(k):
 
 
 def fulfillAssetMap(k):
-    logger.info('fulfillAssetMap:'+ str(id(assetMap)))
     if k in assetMap:
         return assetMap[k]
     else:
@@ -120,14 +119,15 @@ def fulfillAssetMap(k):
 
 @celery.task
 def Async_Query(account,start, end, op_type_id ,to_addr):
+    info = {'account':account,'start':start,'end':end,'op_type_id':op_type_id, 'to_addr':to_addr}
     logger.info('cursor creating...')
     logger.info('Async_Query:'+ str(id(assetMap)))
     c = db.account_history.find({'bulk.account_history.account':account,'bulk.operation_type':op_type_id, 'bulk.block_data.block_time':{'$gte':start, '$lte':end} })
     res = []
     page = 0
     files = []
+    # celery.update_state(state='PROGRESS', meta={'status': 'start query...', params:info})
     filename_base = '_'.join([account,start,end,str(op_type_id)])
-
     for j in c:
         d = {"op": j['op'], "block_num": j['bulk']["block_data"]["block_num"],
                       "timestamp": j['bulk']["block_data"]["block_time"]
@@ -193,7 +193,7 @@ def Async_Query(account,start, end, op_type_id ,to_addr):
     logger.info('cursor finished!')
     qmail.mail(files, to_addr)
     logger.info('mail sent to '+ to_addr)
-    return {'result': filename_base + '*.csv','status': 'Task completed!'}
+    return {'result': filename_base + '*.csv','status': 'Task completed!', 'params':info}
 
 
 
