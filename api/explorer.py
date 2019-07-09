@@ -1,4 +1,4 @@
-import datetime
+import datetime,time
 from services.bitshares_websocket_client import BitsharesWebsocketClient, client as bitshares_ws_client_factory
 import json
 import config
@@ -12,7 +12,7 @@ from logging.handlers import TimedRotatingFileHandler
 import types
 from services import qmail
 from services.cache import cache
-
+import os
 
 
 is_print_date = False
@@ -193,6 +193,9 @@ def Async_Query(account,start, end, op_type_id ,to_addr):
     logger.info('cursor finished!')
     qmail.mail(files, to_addr)
     logger.info('mail sent to '+ to_addr)
+    time.sleep(2)
+    logger.info('rm -f %s/%s*.csv' % (config.TODIR,filename_base))
+    os.system('rm -f %s/%s*.csv' % (config.TODIR,filename_base))
     return {'result': filename_base + '*.csv','status': 'Task completed!', 'params':info}
 
 
